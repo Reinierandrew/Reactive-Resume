@@ -26,14 +26,43 @@ export class PrinterService {
     const chromeUrl = this.configService.getOrThrow<string>("CHROME_URL");
     const chromeToken = this.configService.getOrThrow<string>("CHROME_TOKEN");
 
-    this.browserURL = `${chromeUrl}?token=${chromeToken}`;
+    // For system Chrome, use the URL directly without token
+    // For Browserless, append the token
+    if (chromeUrl.startsWith("ws://localhost:9222") || chromeUrl.startsWith("http://localhost:9222")) {
+      // System Chrome - no token needed
+      this.browserURL = chromeUrl;
+    } else {
+      // Browserless - requires token
+      this.browserURL = `${chromeUrl}?token=${chromeToken}`;
+    }
     this.ignoreHTTPSErrors = this.configService.getOrThrow<boolean>("CHROME_IGNORE_HTTPS_ERRORS");
   }
 
   private async getBrowser() {
     try {
+      let wsEndpoint = this.browserURL;
+      
+      // If using HTTP endpoint for system Chrome, fetch WebSocket URL
+      if (this.browserURL.startsWith("http://localhost:9222") || this.browserURL.startsWith("http://127.0.0.1:9222")) {
+        try {
+          const response = await this.httpService.axiosRef.get(`${this.browserURL}/json/version`);
+          wsEndpoint = response.data.webSocketDebuggerUrl;
+        } catch {
+          // Fallback: try to get from /json endpoint
+          try {
+            const response = await this.httpService.axiosRef.get(`${this.browserURL}/json`);
+            if (response.data && response.data.length > 0) {
+              wsEndpoint = response.data[0].webSocketDebuggerUrl;
+            }
+          } catch {
+            // Use the HTTP URL directly - Puppeteer might handle it
+            wsEndpoint = this.browserURL;
+          }
+        }
+      }
+      
       return await connect({
-        browserWSEndpoint: this.browserURL,
+        browserWSEndpoint: wsEndpoint,
         acceptInsecureCerts: this.ignoreHTTPSErrors,
       });
     } catch (error) {

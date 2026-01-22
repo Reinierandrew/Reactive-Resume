@@ -23,8 +23,12 @@ export class TranslationService {
 
   async fetchLanguages() {
     try {
-      const projectId = this.configService.getOrThrow("CROWDIN_PROJECT_ID");
-      const accessToken = this.configService.getOrThrow("CROWDIN_PERSONAL_TOKEN");
+      const projectId = this.configService.get("CROWDIN_PROJECT_ID");
+      const accessToken = this.configService.get("CROWDIN_PERSONAL_TOKEN");
+      
+      if (!projectId || !accessToken) {
+        return languages;
+      }
 
       const response = await this.httpService.axiosRef.get(
         `https://api.crowdin.com/api/v2/projects/${projectId}/languages/progress?limit=100`,

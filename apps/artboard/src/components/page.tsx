@@ -1,5 +1,6 @@
 import { useTheme } from "@reactive-resume/hooks";
 import { cn, pageSizeMap } from "@reactive-resume/utils";
+import * as React from "react";
 
 import { useArtboardStore } from "../store/artboard";
 

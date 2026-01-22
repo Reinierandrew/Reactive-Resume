@@ -11,14 +11,28 @@ import { StorageService } from "./storage.service";
   imports: [
     MinioModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService<Config>) => ({
-        endPoint: configService.getOrThrow<string>("STORAGE_ENDPOINT"),
-        port: configService.getOrThrow<number>("STORAGE_PORT"),
-        region: configService.get<string>("STORAGE_REGION"),
-        accessKey: configService.getOrThrow<string>("STORAGE_ACCESS_KEY"),
-        secretKey: configService.getOrThrow<string>("STORAGE_SECRET_KEY"),
-        useSSL: configService.getOrThrow<boolean>("STORAGE_USE_SSL"),
-      }),
+      useFactory: (configService: ConfigService<Config>) => {
+        let endpoint = configService.getOrThrow<string>("STORAGE_ENDPOINT");
+        const port = configService.getOrThrow<number>("STORAGE_PORT");
+        const useSSL = configService.getOrThrow<boolean>("STORAGE_USE_SSL");
+        
+        // For Supabase Storage S3, the endpoint should be just the hostname
+        // The Minio client will construct URLs, but Supabase S3 needs the /storage/v1/s3 path
+        // We'll handle this by using just the hostname and letting Minio construct the base URL
+        if (endpoint.includes("supabase.co")) {
+          // Extract just the hostname (remove any path)
+          endpoint = endpoint.split("/")[0];
+        }
+        
+        return {
+          endPoint: endpoint,
+          port: port,
+          region: configService.get<string>("STORAGE_REGION"),
+          accessKey: configService.getOrThrow<string>("STORAGE_ACCESS_KEY"),
+          secretKey: configService.getOrThrow<string>("STORAGE_SECRET_KEY"),
+          useSSL: useSSL,
+        };
+      },
     }),
   ],
   controllers: [StorageController],

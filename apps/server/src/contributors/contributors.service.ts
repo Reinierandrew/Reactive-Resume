@@ -19,27 +19,35 @@ export class ContributorsService {
   ) {}
 
   async fetchGitHubContributors() {
-    const response = await this.httpService.axiosRef.get(
-      `https://api.github.com/repos/AmruthPillai/Reactive-Resume/contributors`,
-    );
+    try {
+      const response = await this.httpService.axiosRef.get(
+        `https://api.github.com/repos/AmruthPillai/Reactive-Resume/contributors`,
+      );
     const data = response.data as GitHubResponse;
 
-    return data
-      .filter((_, index) => index <= 20)
-      .map((user) => {
-        return {
-          id: user.id,
-          name: user.login,
-          url: user.html_url,
-          avatar: user.avatar_url,
-        } satisfies ContributorDto;
-      });
+      return data
+        .filter((_, index) => index <= 20)
+        .map((user) => {
+          return {
+            id: user.id,
+            name: user.login,
+            url: user.html_url,
+            avatar: user.avatar_url,
+          } satisfies ContributorDto;
+        });
+    } catch {
+      return [];
+    }
   }
 
   async fetchCrowdinContributors() {
     try {
-      const projectId = this.configService.getOrThrow("CROWDIN_PROJECT_ID");
-      const accessToken = this.configService.getOrThrow("CROWDIN_PERSONAL_TOKEN");
+      const projectId = this.configService.get("CROWDIN_PROJECT_ID");
+      const accessToken = this.configService.get("CROWDIN_PERSONAL_TOKEN");
+      
+      if (!projectId || !accessToken) {
+        return [];
+      }
 
       const response = await this.httpService.axiosRef.get(
         `https://api.crowdin.com/api/v2/projects/${projectId}/members`,

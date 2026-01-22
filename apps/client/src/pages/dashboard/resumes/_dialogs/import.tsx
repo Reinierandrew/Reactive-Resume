@@ -24,7 +24,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  Input,
   Label,
   ScrollArea,
   Select,
@@ -34,9 +33,10 @@ import {
   SelectValue,
 } from "@reactive-resume/ui";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z, ZodError } from "zod";
+import * as React from "react";
 
 import { useToast } from "@/client/hooks/use-toast";
 import { useImportResume } from "@/client/services/resume/import";
@@ -71,6 +71,7 @@ export const ImportDialog = () => {
   const { toast } = useToast();
   const { isOpen, close } = useDialog("import");
   const { importResume, loading } = useImportResume();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
@@ -82,6 +83,12 @@ export const ImportDialog = () => {
   });
   const filetype = form.watch("type");
 
+  const accept = useMemo(() => {
+    if (filetype.includes("json")) return ".json";
+    if (filetype.includes("zip")) return ".zip";
+    return "";
+  }, [filetype]);
+
   useEffect(() => {
     if (isOpen) onReset();
   }, [isOpen]);
@@ -89,13 +96,12 @@ export const ImportDialog = () => {
   useEffect(() => {
     form.reset({ file: undefined, type: filetype });
     setValidationResult(null);
-  }, [filetype]);
-
-  const accept = useMemo(() => {
-    if (filetype.includes("json")) return ".json";
-    if (filetype.includes("zip")) return ".zip";
-    return "";
-  }, [filetype]);
+    // Reset file input ref when filetype changes
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.accept = accept;
+    }
+  }, [filetype, accept]);
 
   const onValidate = async () => {
     try {
@@ -194,6 +200,10 @@ export const ImportDialog = () => {
   const onReset = () => {
     form.reset();
     setValidationResult(null);
+    // Reset file input when dialog resets
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -254,15 +264,37 @@ export const ImportDialog = () => {
                 <FormItem>
                   <FormLabel>{t`File`}</FormLabel>
                   <FormControl>
-                    <Input
-                      key={`${accept}-${filetype}`}
-                      type="file"
-                      accept={accept}
-                      onChange={(event) => {
-                        if (!event.target.files?.length) return;
-                        field.onChange(event.target.files[0]);
-                      }}
-                    />
+                    <div className="flex items-center gap-2">
+                      <label className="relative inline-flex h-9 items-center justify-center rounded border border-border bg-transparent px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary/60 hover:text-secondary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer">
+                        {field.value ? field.value.name : t`Choose File`}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept={accept}
+                          onChange={(event) => {
+                            if (!event.target.files?.length) return;
+                            field.onChange(event.target.files[0]);
+                          }}
+                          style={{
+                            position: "absolute",
+                            width: "1px",
+                            height: "1px",
+                            padding: 0,
+                            margin: "-1px",
+                            overflow: "hidden",
+                            clip: "rect(0, 0, 0, 0)",
+                            whiteSpace: "nowrap",
+                            borderWidth: 0,
+                            opacity: 0,
+                          }}
+                        />
+                      </label>
+                      {field.value && (
+                        <span className="text-sm text-muted-foreground">
+                          {field.value.name}
+                        </span>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
                   {accept && (

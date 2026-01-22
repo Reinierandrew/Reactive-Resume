@@ -4,6 +4,7 @@ import { lingui } from "@lingui/vite-plugin";
 import { nxViteTsPaths } from "@nx/vite/plugins/nx-tsconfig-paths.plugin";
 import react from "@vitejs/plugin-react";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   cacheDir: "../../node_modules/.vite/client",
@@ -15,6 +16,8 @@ export default defineConfig({
 
   define: {
     appVersion: JSON.stringify(process.env.npm_package_version),
+    global: "globalThis",
+    "process.env": "{}",
   },
 
   server: {
@@ -35,7 +38,13 @@ export default defineConfig({
       loader: {
         ".po": "text",
       },
+      // Polyfill Node.js modules for browser compatibility
+      define: {
+        global: "globalThis",
+      },
     },
+    // Include sanitize-html for proper CommonJS handling
+    include: ["sanitize-html"],
   },
 
   plugins: [
@@ -46,6 +55,17 @@ export default defineConfig({
     }),
     lingui(),
     nxViteTsPaths(),
+    nodePolyfills({
+      // Exclude modules that cause issues
+      exclude: ["fs"],
+      // Include only what's needed
+      include: ["path", "url"],
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+    }),
   ],
 
   test: {
